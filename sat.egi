@@ -1,7 +1,17 @@
+(define $deleteLiterals
+  (lambda [$l $cnf]
+    (map (lambda [$c] (match-all c (multiset integer)
+                        [<cons (and !,l $x) _> x]))
+         cnf)))
+
+(define $assignTrue
+  (lambda [$l $cnf]
+    (deleteLiterals (neg l) (deleteClausesWith {l} cnf))))
+
 (define $deleteClausesWith
   (lambda [$ls $cnf]
-    (match-all [ls cnf] [(multiset integer) (list (multiset integer))]
-      [[<cons $l _> <join _ <cons (& !<cons ,l _> $c) _>>] c])))
+    (match-all cnf (multiset (multiset integer))
+      [<cons (& !<cons ?(lambda [$l] (member? l ls)) _> $c) _> c])))
 
 (define $resolveOn
   (lambda [$v $cnf]
@@ -9,17 +19,21 @@
       [<cons <cons ,v (and <cons $l _> $xs)>
         <cons <cons ,(neg v) (and !<cons ,(neg l) _> $ys)>
           _>>
-       {@xs @ys}])))
+       (unique {@xs @ys})])))
 
 (define $sat
   (lambda [$vars $cnf]
     (match [vars cnf] [(multiset integer) (multiset (multiset integer))]
       {[[_ <nil>] #t]
        [[_ <cons <nil> _>] #f]
-       [[_ <cons <cons $l <nil>> _>] (sat (delete (abs l) vars) (deleteClausesWith {l} cnf))]
-       [[<cons $v $vs> !<cons <cons ,(neg v) _> _>] (sat vs (deleteClausesWith {v} cnf))]
-       [[<cons $v $vs> !<cons <cons ,v _> _>] (sat vs (deleteClausesWith {(neg v)} cnf))]
-       [[<cons $v $vs> _] (sat vs (resolveOn v (deleteClausesWith {v (neg v)} cnf)))]
+       [[_ <cons <cons $l <nil>> _>] (sat (delete (abs l) vars) (assignTrue l cnf))]
+       [[<cons $v $vs> !<cons <cons ,(neg v) _> _>] (sat vs (assignTrue v cnf))]
+       [[<cons $v $vs> !<cons <cons ,v _> _>] (sat vs (assignTrue (neg v) cnf))]
+       [[<cons $v $vs> _] (sat vs  {@(resolveOn v cnf) @(deleteClausesWith {v (neg v)} cnf)})]
        })))
 
-(sat {1 2 3} {{1 2} {-1 3} {-1 -3}})
+(sat {1} {{1}}) ; #t
+(sat {1} {{1} {-1}}) ; #f
+(sat {1 2 3} {{1 2} {-1 3} {1 -3}}) ; #t
+(sat {1 2} {{1 2} {-1 -2} {1 -2}}) ; #t
+(sat {1 2} {{1 2} {-1 -2} {1 -2} {-1 2}}) ; #f

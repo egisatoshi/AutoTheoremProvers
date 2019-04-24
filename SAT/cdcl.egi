@@ -1,0 +1,87 @@
+;;
+;; DPLL with backjumping and learning
+;;
+
+(define $assignment
+  (algebraic-data-matcher
+    {<deduced integer> <guessed integer>}))
+
+(define $guessed
+  (lambda [$trail]
+    (match-all trail (list assignment)
+      [<join _ <cons <guessed $l> _>> l])))
+
+(define $deduced
+  (lambda [$trail]
+    (match-all trail (list assignment)
+      [<join _ <cons <deduced $l> _>> l])))
+
+(define $delete-literals
+  (lambda [$l $cnf]
+    (map (lambda [$c] (match-all c (multiset integer)
+                        [<cons (and !,l $x) _> x]))
+         cnf)))
+
+(define $delete-clauses-with
+  (lambda [$l $cnf]
+    (match-all cnf (multiset (multiset integer))
+      [<cons (& !<cons ,l _> $c) _> c])))
+
+(define $assign-true
+  (lambda [$l $cnf]
+    (delete-literals (neg l) (delete-clauses-with l cnf))))
+
+(define $unit-propagate
+  (lambda [$cnf $trail]
+    (match cnf (multiset (multiset integer))
+      {[<cons <nil> _> [cnf trail]]
+       [<cons <cons $l <nil>> _> (unit-propagate (assign-true l cnf) {<Deduced l> @trail})]
+       [<cons <cons $l _> !<cons <cons ,(neg l) _> _>> (unit-propagate (assign-true l cnf) {<Deduced l> @trail})]
+       [_ [cnf trail]]
+       })))
+
+(define $conflict?
+  (lambda [$cnf]
+    (match (2#%1 (unit-propagate cnf {})) (multiset (multiset integer))
+      {[<cons <nil> _> #t]
+       [_ #f]})))
+
+(define $add-unit-clauses
+  (lambda [$ls $cnf]
+    {@(map (lambda [$l] {l}) ls) @cnf}))
+
+(define $backjump
+  (lambda [$cnf $p $trail]
+    (match trail (list assignment)
+      {[<join _ (& <cons <guessed $l> $trail''> $trail')>
+        (if (conflict? cnf {<Guessed p> @trail'})
+          (backjump p trail'')
+          trail')]
+       [_ trail]})))
+
+(define $dplb'
+  (lambda [$cnf $trail]
+    (let {[[$cnf $trail] (unit-propagate cnf trail)]}
+      (match cnf (multiset (multiset integer))
+        {[<nil> [#t trail]]
+         [<cons <nil> _>
+          (match trail (list assignment)
+            {[<join _ <cons <guessed $l> $trail'>>
+              (let {[$trail'' (backjump cnf l trail')]}
+                (dplb' {{l @(guessed trail'')} @cnf} {<Deduced (neg l)> @trail''}))]
+            [_ #f]})]
+         [<cons <cons $l _> _> (dplb' (assign-true l cnf) {<Guessed l> @trail})]
+         }))))
+
+(define $dplb
+  (lambda [$cnf]
+    (dplb' cnf {})))
+
+"dplb start"
+(dplb {{1}}) ; #t
+(dplb {{1} {-1}}) ; #f
+(dplb {{1 2} {-1 3} {1 -3}}) ; #t
+(dplb {{1 2} {-1 -2} {1 -2}}) ; #t
+(dplb {{1 2} {-1 -2} {1 -2} {-1 2}}) ; #f
+"dplb end"
+

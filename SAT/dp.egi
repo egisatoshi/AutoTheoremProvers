@@ -12,17 +12,51 @@
   (lambda [$l $cnf]
     (delete-literals (neg l) (delete-clauses-with {l} cnf))))
 
+;(define $delete-clauses-with
+;  (lambda [$ls $cnf]
+;    (match-all cnf (multiset (multiset integer))
+;      [<cons (& !<cons ?(lambda [$l] (member? l ls)) _> $c) _> c]))) ; match patternできれいになりそう．
+
+;(define $delete-clauses-with
+;  (lambda [$ls $cnf]
+;    (match-all cnf (multiset (multiset integer))
+;      [<cons (& !(match $l [ls (multiset integer) <cons ,l _>]) $c) _> c])))
+
+;(define $delete-clauses-with
+;  (lambda [$ls $cnf]
+;    (match-all [ls cnf] [(multiet integer) (multiset (multiset integer))]
+;      [(forall <cons $l _>) <cons (& !<cons ,l _> $c) _> c])))
+
 (define $delete-clauses-with
   (lambda [$ls $cnf]
-    (match-all cnf (multiset (multiset integer))
-      [<cons (& !<cons ?(lambda [$l] (member? l ls)) _> $c) _> c]))) ; match patternできれいになりそう．
+    (match-all [ls cnf] [(multiset integer) (multiset (multiset integer))]
+      [{[# <cons (& # $c) _>]
+        ![<cons $l _> <cons ,l _>]}
+       c])))
+
+;(define $resolve-on
+;  (lambda [$v $cnf]
+;    (match-all cnf (multiset (multiset integer))
+;      [<cons <cons ,v $xs>
+;        <cons <cons ,(neg v) (and !<cons ?(lambda [$l] (member? (neg l) xs)) _> $ys)>
+;          _>>
+;       (unique {@xs @ys})])))
+
+;(define $resolve-on
+;  (lambda [$v $cnf]
+;    (match-all cnf (multiset (multiset integer))
+;      [<cons <cons ,v (and (forall <cons $x _>) $xs)>
+;        <cons <cons ,(neg v) (and !<cons ,x _> $ys)>
+;          _>>
+;       (unique {@xs @ys})])))
 
 (define $resolve-on
   (lambda [$v $cnf]
     (match-all cnf (multiset (multiset integer))
-      [<cons <cons ,v (and <cons $l _> $xs)>
-        <cons <cons ,(neg v) (and !<cons ,(neg l) _> $ys)>
+      [{<cons <cons ,v (& # $xs)>
+         <cons <cons ,(neg v) (and # $ys)>
           _>>
+        ![<cons $l _> <cons ,(neg l) _>]}
        (unique {@xs @ys})])))
 
 (define $dp
@@ -33,7 +67,7 @@
        [[_ <cons <cons $l <nil>> _>] (dp (delete (abs l) vars) (assign-true l cnf))]
        [[<cons $v $vs> !<cons <cons ,(neg v) _> _>] (dp vs (assign-true v cnf))]
        [[<cons $v $vs> !<cons <cons ,v _> _>] (dp vs (assign-true (neg v) cnf))]
-       [[<cons $v $vs> _] (dp vs  {@(resolve-on v cnf) @(delete-clauses-with {v (neg v)} cnf)})]
+       [[<cons $v $vs> _] (dp vs {@(resolve-on v cnf) @(delete-clauses-with {v (neg v)} cnf)})]
        })))
 
 "dp start"
@@ -42,6 +76,8 @@
 (dp {1 2 3} {{1 2} {-1 3} {1 -3}}) ; #t
 (dp {1 2} {{1 2} {-1 -2} {1 -2}}) ; #t
 (dp {1 2} {{1 2} {-1 -2} {1 -2} {-1 2}}) ; #f
+(dp {1 2 3 4 5} {{-1 -2 3} {-1 -2 -3} {1 2 3 4} {-4 -2 3} {5 1 2 -3} {-3 1 -5} {1 -2 3 4} {1 -2 -3 5}}) ; #t
+(dp {1 2} {{-1 -2} {1}}) ; #t
 "dp end"
 
 ;;
@@ -77,4 +113,5 @@
 (dpll {1 2 3} {{1 2} {-1 3} {1 -3}}) ; #t
 (dpll {1 2} {{1 2} {-1 -2} {1 -2}}) ; #t
 (dpll {1 2} {{1 2} {-1 -2} {1 -2} {-1 2}}) ; #f
+(dpll {1 2 3 4 5} {{-1 -2 3} {-1 -2 -3} {1 2 3 4} {-4 -2 3} {5 1 2 -3} {-3 1 -5} {1 -2 3 4} {1 -2 -3 5}}) ; #f
 "dpll end"

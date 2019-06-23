@@ -99,7 +99,7 @@
            [_ #f]})]
        [[_ <cons <cons $l <nil>> _>] (dpll' (delete (abs l) vars) (assign-true l cnf) {<Deduced l> @trail})]
        [[<cons $v $vs> !<cons <cons ,(neg v) _> _>] (dpll' vs (assign-true v cnf) {<Deduced v> @trail})]
-       [[<cons $v $vs> !<cons <cons ,v _> _>] (dpll' vs (assign-true v cnf) {<Deduced (neg v)> @trail})]
+       [[<cons $v $vs> !<cons <cons ,v _> _>] (dpll' vs (assign-true (neg v) cnf) {<Deduced (neg v)> @trail})]
        [[<cons $v $vs> _] (dpll' vs (assign-true v cnf) {<Guessed v vs cnf> @trail})]
        })))
 
@@ -114,4 +114,5 @@
 (dpll {1 2} {{1 2} {-1 -2} {1 -2}}) ; #t
 (dpll {1 2} {{1 2} {-1 -2} {1 -2} {-1 2}}) ; #f
 (dpll {1 2 3 4 5} {{-1 -2 3} {-1 -2 -3} {1 2 3 4} {-4 -2 3} {5 1 2 -3} {-3 1 -5} {1 -2 3 4} {1 -2 -3 5}}) ; #f
+(dpll {1 2} {{-1 -2} {1}}) ; #t
 "dpll end"

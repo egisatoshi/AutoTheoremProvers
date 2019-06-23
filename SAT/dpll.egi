@@ -41,7 +41,7 @@
        })))
 
 (define $conflict?
-  (lambda [$cnf]
+  (lambda [$cnf $trail]
     (match (2#%1 (unit-propagate cnf {})) (multiset (multiset integer))
       {[<cons <nil> _> #t]
        [_ #f]})))
@@ -50,8 +50,8 @@
   (lambda [$cnf $p $trail]
     (match trail (list assignment)
       {[<join _ (& <cons <guessed $l> $trail''> $trail')>
-        (if (conflict? cnf {<Guessed p> @trail'})
-          (backjump p trail'')
+        (if (conflict? cnf {<Guessed p> @trail''})
+          (backjump cnf p trail'')
           trail')]
        [_ trail]})))
 
@@ -64,7 +64,7 @@
           (match trail (list assignment)
             {[<join _ <cons <guessed $l> $trail'>>
               (let {[$trail'' (backjump cnf l trail')]}
-                (dplb' {{l @(guessed trail'')} @cnf} {<Deduced (neg l)> @trail''}))]
+                (dplb' {(map neg {l @(guessed trail'')}) @cnf} {<Deduced (neg l)> @trail''}))]
              [_ #f]})]
          [<cons <cons $l _> _> (dplb' (assign-true l cnf) {<Guessed l> @trail})]
          }))))
@@ -79,5 +79,5 @@
 (dplb {{1 2} {-1 3} {1 -3}}) ; #t
 (dplb {{1 2} {-1 -2} {1 -2}}) ; #t
 (dplb {{1 2} {-1 -2} {1 -2} {-1 2}}) ; #f
+(dplb {{-1 -2 3} {-1 -2 -3} {1 2 3 4} {-4 -2 3} {5 1 2 -3} {-3 1 -5} {1 -2 3 4} {1 -2 -3 5}}) ; #f
 "dplb end"
-

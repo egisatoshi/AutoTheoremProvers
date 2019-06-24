@@ -223,7 +223,7 @@
   
 ;(dp (between 1 50) problem)
 ;(dpll (between 1 50) problem)
-(dplb (between 1 50) problem) ; 13min
+(dplb (between 1 50) problem) ; 7:46.44
 
 ;(unit-propagate (between 1 50) problem {<Guessed -18>})
 

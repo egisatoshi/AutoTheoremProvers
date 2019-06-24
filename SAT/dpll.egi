@@ -10,10 +10,17 @@
      [<guessed $> [integer]
       {[<Guessed $l> {l}]
        [_ {}]}]
-     [<whichever $> [integer]
+     [<either $> [integer]
       {[<Deduced $l> {l}]
        [<Guessed $l> {l}]}]
      [$ [something]
+      {[$tgt {tgt}]}]}))
+
+(define $literal
+  (matcher
+    {[<whichever $> [integer]
+      {[$tgt {tgt (neg tgt)}]}]
+     [$ [integer]
       {[$tgt {tgt}]}]}))
 
 (define $guessed
@@ -42,37 +49,39 @@
     (delete-literal (neg l) (delete-clauses-with l cnf))))
 
 (define $unit-propagate''
-  (lambda [$cnf $trail]
-    (match cnf (multiset (multiset integer))
-      {[<cons <nil> _> [cnf trail]]
-       [<cons <cons $l <nil>> _> (unit-propagate'' (assign-true l cnf) {<Deduced l> @trail})]
-       [<cons <cons $l _> !<cons <cons ,(neg l) _> _>> (unit-propagate'' (assign-true l cnf) {<Deduced l> @trail})]
-       [_ [cnf trail]]
+  (lambda [$vars $cnf $trail]
+    (match [vars cnf] [(multiset integer) (multiset (multiset literal))]
+      {[[_ <cons <nil> _>] [cnf trail]]
+       [[_ <cons <cons $l <nil>> _>] (unit-propagate'' (delete (abs l) vars) (assign-true l cnf) {<Deduced l> @trail})]
+       [[<cons $l _> !<cons <cons <whichever ,l> _> _>] (unit-propagate'' (delete (abs l) vars) (assign-true l cnf) trail)]
+       [[<cons $l _> !<cons <cons ,(neg l) _> _>] (unit-propagate'' (delete (abs l) vars) (assign-true l cnf) {<Deduced l> @trail})]
+       [[<cons $l _> !<cons <cons ,l _> _>] (unit-propagate'' (delete (abs l) vars) (assign-true (neg l) cnf) {<Deduced l> @trail})]
+       [[_ _] [cnf trail]]
        })))
 
 (define $unit-propagate'
-  (lambda [$cnf $trail' $trail]
+  (lambda [$vars $cnf $trail' $trail]
     (match trail' (list assignment)
-      {[<cons <whichever $l> $trail'> (unit-propagate' (assign-true l cnf) trail' trail)]
-       [_ (unit-propagate'' cnf trail)]
+      {[<cons <either $l> $trail'> (unit-propagate' (delete (abs l) vars) (assign-true l cnf) trail' trail)] ; delte var from vars
+       [_ (unit-propagate'' vars cnf trail)]
        })))
 
 (define $unit-propagate
-  (lambda [$cnf $trail]
-    (unit-propagate' cnf trail trail)))
+  (lambda [$vars $cnf $trail]
+    (unit-propagate' vars cnf trail trail)))
 
 (define $conflict?
-  (lambda [$cnf $trail]
-    (match (2#%1 (unit-propagate cnf trail)) (multiset (multiset integer))
+  (lambda [$vars $cnf $trail]
+    (match (2#%1 (unit-propagate vars cnf trail)) (multiset (multiset integer))
       {[<cons <nil> _> #t]
        [_ #f]})))
 
 (define $backjump
-  (lambda [$cnf $p $trail]
+  (lambda [$vars $cnf $p $trail]
     (match trail (list assignment)
       {[<join _ (& <cons <guessed $l> $trail''> $trail')>
-        (if (conflict? cnf {<Guessed p> @trail''})
-          (backjump cnf (debug2 "backjumping(p): " p) (debug2 "backjumping(trail): " trail''))
+        (if (conflict? vars cnf {<Guessed p> @trail''})
+          (backjump vars cnf (debug2 "backjumping(p): " p) (debug2 "backjumping(trail): " trail''))
           trail')]
        [_ trail]})))
 
@@ -82,37 +91,38 @@
           [<cons (& !<join ,c _> $d) _> d])}))
 
 (define $dplb'
-  (lambda [$cnf $trail]
-    (let {[[$cnf' $trail] (unit-propagate (debug2 (show (length cnf)) cnf) (debug2 "trail: " trail))]}
+  (lambda [$vars $cnf $trail]
+    (let {[[$cnf' $trail] (unit-propagate vars cnf (debug2 "trail: " trail))]}
+;    (let {[[$cnf' $trail] (unit-propagate vars (debug2 (show (length cnf)) cnf) (debug2 "trail: " trail))]}
       (match [cnf' trail] [(multiset (multiset integer)) (multiset assignment)]
         {[[<nil> _] [#t trail]]
          [[<cons <nil> _> _]
           (match trail (list assignment)
             {[<join _ <cons <guessed $l> $trail'>>
-              (let {[$trail'' (backjump cnf l trail')]}
-                (dplb' (add-clause (debug2 "learned: " (map neg {l @(guessed trail'')})) cnf) {<Deduced (neg l)> @trail''}))]
+              (let {[$trail'' (backjump vars cnf l trail')]}
+                (dplb' vars (add-clause (debug2 "learned: " (map neg {l @(guessed trail'')})) cnf) {<Deduced (neg l)> @trail''}))]
              [_ #f]})]
-         [[<cons <cons $l _> _> !(| <cons <whichever ,l> _>
-                                    <cons <whichever ,(neg l)> _>)]
-          (dplb' cnf {<Guessed l> @trail})]
+         [[<cons <cons $l _> _> !(| <cons <either ,l> _>
+                                    <cons <either ,(neg l)> _>)]
+          (dplb' vars cnf {<Guessed l> @trail})]
          }))))
 
 (define $dplb
   (lambda [$vars $cnf]
-    (dplb' cnf {})))
+    (dplb' vars cnf {})))
 
 "dplb start"
-(dplb {{1}}) ; [#t {<Deduced 1>}]
-(dplb {{1} {-1}}) ; #f
-(dplb {{1 2} {-1 3} {1 -3}}) ; [#t {<Deduced -3> <Guessed -1> <Deduced 2>}]
-(dplb {{1 2} {-1 -2} {1 -2}}) ; [#t {<Deduced -2> <Guessed 1>}]
-(dplb {{1 2} {-1 -2} {1 -2} {-1 2}}) ; #f
-(dplb {{-1 -2 3} {-1 -2 -3} {1 2 3 4} {-4 -2 3} {5 1 2 -3} {-3 1 -5} {1 -2 3 4} {1 -2 -3 5}}) ; [#t {<Deduced -3> <Deduced 4> <Deduced -2> <Guessed -1>}]
+(dplb {1} {{1}}) ; [#t {<Deduced 1>}]
+(dplb {1} {{1} {-1}}) ; #f
+(dplb {1 2 3} {{1 2} {-1 3} {1 -3}}) ; [#t {<Deduced -3> <Guessed -1> <Deduced 2>}]
+(dplb {1 2} {{1 2} {-1 -2} {1 -2}}) ; [#t {<Deduced -2> <Guessed 1>}]
+(dplb {1 2} {{1 2} {-1 -2} {1 -2} {-1 2}}) ; #f
+(dplb {1 2 3 4 5} {{-1 -2 3} {-1 -2 -3} {1 2 3 4} {-4 -2 3} {5 1 2 -3} {-3 1 -5} {1 -2 3 4} {1 -2 -3 5}}) ; [#t {<Deduced -3> <Deduced 4> <Deduced -2> <Guessed -1>}]
 "dplb end"
 
 (define $pure-unit-propagate
   (lambda [$cnf $trail]
     (match trail (list assignment)
-      {[<cons <whichever $l> $trail'> (pure-unit-propagate (assign-true l cnf) trail')]
+      {[<cons <either $l> $trail'> (pure-unit-propagate (assign-true l cnf) trail')]
        [_ cnf]
        })))

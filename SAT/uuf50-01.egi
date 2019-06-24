@@ -223,4 +223,12 @@
   
 ;(dp (between 1 50) problem)
 ;(dpll (between 1 50) problem)
-(dplb problem) ; 13min
+;(dplb problem) ; 13min
+
+(pure-unit-propagate problem {<Guessed -45> <Deduced -41> <Guessed 43> <Guessed -50> <Deduced -44> <Deduced 23> <Deduced 46> <Deduced 39> <Deduced 38> <Guessed -11> <Deduced 35> <Guessed 6> <Deduced -9> <Deduced -48> <Deduced 47> <Deduced 36> <Deduced 3> <Deduced 16> <Deduced 29> <Deduced 8> <Deduced -18>})
+
+(unit-propagate problem {<Guessed -45> <Deduced -41> <Guessed 43> <Guessed -50> <Deduced -44> <Deduced 23> <Deduced 46> <Deduced 39> <Deduced 38> <Guessed -11> <Deduced 35> <Guessed 6> <Deduced -9> <Deduced -48> <Deduced 47> <Deduced 36> <Deduced 3> <Deduced 16> <Deduced 29> <Deduced 8> <Deduced -18>})
+
+(unit-propagate problem {<Guessed -18>})
+
+(unit-propagate problem {})

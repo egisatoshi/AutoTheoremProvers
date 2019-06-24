@@ -78,7 +78,7 @@
 
 (define $dplb'
   (lambda [$cnf $trail]
-    (let {[[$cnf' $trail] (unit-propagate cnf trail)]}
+    (let {[[$cnf' $trail] (unit-propagate cnf (debug trail))]}
       (match [cnf' trail] [(multiset (multiset integer)) (multiset assignment)]
         {[[<nil> _] [#t trail]]
          [[<cons <nil> _> _]

@@ -63,7 +63,7 @@
 
 (define $conflict?
   (lambda [$cnf $trail]
-    (match (2#%1 (unit-propagate cnf {})) (multiset (multiset integer))
+    (match (2#%1 (unit-propagate cnf trail)) (multiset (multiset integer))
       {[<cons <nil> _> #t]
        [_ #f]})))
 
@@ -72,20 +72,20 @@
     (match trail (list assignment)
       {[<join _ (& <cons <guessed $l> $trail''> $trail')>
         (if (conflict? cnf {<Guessed p> @trail''})
-          (backjump cnf p trail'')
+          (backjump cnf p (debug2 "backjumping" trail''))
           trail')]
        [_ trail]})))
 
 (define $dplb'
   (lambda [$cnf $trail]
-    (let {[[$cnf' $trail] (unit-propagate cnf (debug trail))]}
+    (let {[[$cnf' $trail] (unit-propagate cnf (debug2 "trail" trail))]}
       (match [cnf' trail] [(multiset (multiset integer)) (multiset assignment)]
         {[[<nil> _] [#t trail]]
          [[<cons <nil> _> _]
           (match trail (list assignment)
             {[<join _ <cons <guessed $l> $trail'>>
               (let {[$trail'' (backjump cnf l trail')]}
-                (dplb' {(map neg {l @(guessed trail'')}) @cnf} {<Deduced (neg l)> @trail''}))]
+                (dplb' {(debug2 "learned" (map neg {l @(guessed trail'')})) @cnf} {<Deduced (neg l)> @trail''}))]
              [_ #f]})]
          [[<cons <cons $l _> _> !(| <cons <whichever ,l> _>
                                     <cons <whichever ,(neg l)> _>)]

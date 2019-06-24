@@ -97,3 +97,7 @@
 ;(dp (between 1 20) problem)
 ;(dpll (between 1 20) problem)
 (dplb problem)
+
+;(define $main
+;  (lambda [$args]
+;    (print (show (dplb problem)))))

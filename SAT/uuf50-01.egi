@@ -221,6 +221,6 @@
    {-3 -40 8}
    {-23 -31 38}})
   
-;(dp (between 1 20) problem)
-;(dpll (between 1 20) problem)
-(dplb problem)
+;(dp (between 1 50) problem)
+;(dpll (between 1 50) problem)
+(dplb problem) ; 13min
